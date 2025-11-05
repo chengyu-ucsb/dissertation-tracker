@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dissertation Progress Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        .overall-progress {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin-bottom: 3rem;
+        }
+
+        .overall-progress h2 {
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .progress-bar {
+            background: rgba(255,255,255,0.3);
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            background: white;
+            height: 100%;
+            border-radius: 15px;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+
+        .week-container {
+            margin-bottom: 2rem;
+        }
+
+        .week-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px 12px 0 0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .week-header:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .week-header.completed {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .week-header.current {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+        }
+
+        .week-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .week-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .week-badge {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: rgba(255,255,255,0.3);
+        }
+
+        .week-progress-text {
+            font-size: 0.9rem;
+        }
+
+        .week-content {
+            border: 2px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            padding: 1.5rem;
+            display: none;
+        }
+
+        .week-content.expanded {
+            display: block;
+        }
+
+        .week-deliverable {
+            background: #f7fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            color: #2d3748;
+            border-left: 4px solid #667eea;
+        }
+
+        .day-task {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: white;
+            border: 1px solid #e2e8f0;
+        }
+
+        .day-task:hover {
+            background: #f7fafc;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .day-task.completed {
+            background: #f0fff4;
+            border-color: #48bb78;
+        }
+
+        .task-checkbox {
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            cursor: pointer;
+            margin-top: 2px;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-day {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.3rem;
+            font-size: 0.9rem;
+        }
+
+        .task-description {
+            color: #2d3748;
+            line-height: 1.5;
+        }
+
+        .task-completed .task-description {
+            text-decoration: line-through;
+            color: #718096;
+        }
+
+        .expand-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .expand-icon.rotated {
+            transform: rotate(180deg);
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1.5rem;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .week-status {
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📚 Dissertation Progress Tracker</h1>
+        <p class="subtitle">Content Teams in Esports - Daily Task Tracker</p>
+
+        <div class="overall-progress">
+            <h2>Overall Progress</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" id="overallProgress">0%</div>
+            </div>
+            <div class="stats">
+                <div>
+                    <div class="stat-number" id="completedTasks">0/0</div>
+                    <div class="stat-label">Tasks Completed</div>
+                </div>
+                <div>
+                    <div class="stat-number" id="completedWeeks">0/6</div>
+                    <div class="stat-label">Weeks Complete</div>
+                </div>
+                <div>
+                    <div class="stat-number" id="currentWeek">--</div>
+                    <div class="stat-label">Current Focus</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="weeksContainer"></div>
+
+        <div class="controls">
+            <button class="btn btn-secondary" onclick="resetProgress()">Reset All</button>
+            <button class="btn btn-primary" onclick="expandAll()">Expand All</button>
+        </div>
+    </div>
+
+    <script>
+        const writingPlan = [
+            {
+                week: 1,
+                title: "Chapter 1: Introduction",
+                deliverable: "Complete Chapter 1 draft (25-30 pages)",
+                status: "completed",
+                tasks: [
+                    { days: "Days 1-2", description: "Refine opening and problem statement", completed: true },
+                    { days: "Days 3-4", description: "Strengthen research questions and framework preview", completed: true },
+                    { days: "Days 5-7", description: "Draft methodology overview and roadmap", completed: true }
+                ]
+            },
+            {
+                week: 2,
+                title: "Chapter 2: Team Adaptation Literature (Part 1)",
+                deliverable: "Partial Chapter 2 draft (15-20 pages)",
+                status: "current",
+                tasks: [
+                    { days: "Days 1-2", description: "Draft adaptation theory foundation (Burke, Rosen, four phases)", completed: false },
+                    { days: "Days 3-4", description: "Draft transparency as performance context (Bernstein, Flyverbom)", completed: false },
+                    { days: "Days 5-7", description: "Draft digital organizing and team processes", completed: false }
+                ]
+            },
+            {
+                week: 3,
+                title: "Chapter 2: Team Adaptation Literature (Part 2 and Synthesis)",
+                deliverable: "Full Chapter 2 draft (30-35 pages) + Committee checkpoint",
+                status: "not-started",
+                tasks: [
+                    { days: "Days 1-3", description: "Add performance under observation and visibility research", completed: false },
+                    { days: "Days 4-5", description: "Deepen integration across adaptation, transparency, and digital organizing", completed: false },
+                    { days: "Days 6-7", description: "Draft synthesis and transitions", completed: false }
+                ]
+            },
+            {
+                week: 4,
+                title: "Chapter 3: Institutional Work and Hybridity",
+                deliverable: "Full Chapter 3 draft (30-35 pages)",
+                status: "not-started",
+                tasks: [
+                    { days: "Days 1-2", description: "Draft institutional work theory (Lawrence and Suddaby, creation maintenance disruption)", completed: false },
+                    { days: "Days 3-4", description: "Draft hybridity as organizational form (Battilana and Lee, boundary and identity)", completed: false },
+                    { days: "Days 5-7", description: "Draft field level change in digital industries", completed: false }
+                ]
+            },
+            {
+                week: 5,
+                title: "Chapter 4: Theoretical Framework",
+                deliverable: "Chapter 4 draft (15-20 pages)",
+                status: "not-started",
+                tasks: [
+                    { days: "Days 1-2", description: "Write structuration as organizing logic", completed: false },
+                    { days: "Days 3-4", description: "Write team adaptation (interaction) and institutional work (structure) sections", completed: false },
+                    { days: "Days 5-6", description: "Write transparency and hybridity as modalities", completed: false },
+                    { days: "Day 7", description: "Build visual models and integration diagrams", completed: false }
+                ]
+            },
+            {
+                week: 6,
+                title: "Chapter 5: Methodology and Integration",
+                deliverable: "Chapter 5 draft (25-30 pages) + Complete five-chapter draft for committee",
+                status: "not-started",
+                tasks: [
+                    { days: "Days 1-2", description: "Draft research design and philosophy", completed: false },
+                    { days: "Days 3-4", description: "Expand case descriptions and sampling rationale", completed: false },
+                    { days: "Days 5-6", description: "Draft data collection strategy (netnography, interviews, documents, ethics)", completed: false },
+                    { days: "Day 7", description: "Draft analytical strategy and operationalization of constructs", completed: false }
+                ]
+            }
+        ];
+
+        function saveProgress() {
+            localStorage.setItem('dissertationPlan', JSON.stringify(writingPlan));
+        }
+
+        function loadProgress() {
+            const saved = localStorage.getItem('dissertationPlan');
+            if (saved) {
+                const savedPlan = JSON.parse(saved);
+                savedPlan.forEach((savedWeek, weekIndex) => {
+                    writingPlan[weekIndex].status = savedWeek.status;
+                    savedWeek.tasks.forEach((savedTask, taskIndex) => {
+                        writingPlan[weekIndex].tasks[taskIndex].completed = savedTask.completed;
+                    });
+                });
+            }
+        }
+
+        function updateOverallProgress() {
+            const totalTasks = writingPlan.reduce((sum, week) => sum + week.tasks.length, 0);
+            const completedTasks = writingPlan.reduce((sum, week) => 
+                sum + week.tasks.filter(t => t.completed).length, 0);
+            
+            const percentage = Math.round((completedTasks / totalTasks) * 100);
+            
+            document.getElementById('overallProgress').style.width = percentage + '%';
+            document.getElementById('overallProgress').textContent = percentage + '%';
+            document.getElementById('completedTasks').textContent = `${completedTasks}/${totalTasks}`;
+            
+            const completedWeeks = writingPlan.filter(w => w.status === 'completed').length;
+            document.getElementById('completedWeeks').textContent = `${completedWeeks}/6`;
+            
+            const currentWeek = writingPlan.find(w => w.status === 'current');
+            document.getElementById('currentWeek').textContent = currentWeek ? `Week ${currentWeek.week}` : 'Complete!';
+        }
+
+        function updateWeekStatus(weekIndex) {
+            const week = writingPlan[weekIndex];
+            const allCompleted = week.tasks.every(t => t.completed);
+            
+            if (allCompleted && week.status !== 'completed') {
+                week.status = 'completed';
+                
+                // Mark next week as current
+                if (weekIndex < writingPlan.length - 1) {
+                    writingPlan[weekIndex + 1].status = 'current';
+                }
+            } else if (!allCompleted && week.status === 'completed') {
+                week.status = 'current';
+            }
+        }
+
+        function toggleTask(weekIndex, taskIndex) {
+            writingPlan[weekIndex].tasks[taskIndex].completed = 
+                !writingPlan[weekIndex].tasks[taskIndex].completed;
+            
+            updateWeekStatus(weekIndex);
+            saveProgress();
+            renderWeeks();
+            updateOverallProgress();
+        }
+
+        function toggleWeek(weekIndex) {
+            const content = document.getElementById(`week-content-${weekIndex}`);
+            const icon = document.getElementById(`expand-icon-${weekIndex}`);
+            
+            content.classList.toggle('expanded');
+            icon.classList.toggle('rotated');
+        }
+
+        function renderWeeks() {
+            const container = document.getElementById('weeksContainer');
+            container.innerHTML = '';
+
+            writingPlan.forEach((week, weekIndex) => {
+                const completedTasks = week.tasks.filter(t => t.completed).length;
+                const totalTasks = week.tasks.length;
+
+                const weekDiv = document.createElement('div');
+                weekDiv.className = 'week-container';
+                
+                let statusBadge = '';
+                if (week.status === 'completed') {
+                    statusBadge = '<span class="week-badge">✓ Completed</span>';
+                } else if (week.status === 'current') {
+                    statusBadge = '<span class="week-badge">⏳ Current</span>';
+                } else {
+                    statusBadge = '<span class="week-badge">○ Upcoming</span>';
+                }
+
+                weekDiv.innerHTML = `
+                    <div class="week-header ${week.status}" onclick="toggleWeek(${weekIndex})">
+                        <div class="week-title">Week ${week.week}: ${week.title}</div>
+                        <div class="week-status">
+                            ${statusBadge}
+                            <span class="week-progress-text">${completedTasks}/${totalTasks} tasks</span>
+                            <span class="expand-icon" id="expand-icon-${weekIndex}">▼</span>
+                        </div>
+                    </div>
+                    <div class="week-content ${week.status === 'current' ? 'expanded' : ''}" id="week-content-${weekIndex}">
+                        <div class="week-deliverable">
+                            📋 <strong>Deliverable:</strong> ${week.deliverable}
+                        </div>
+                        ${week.tasks.map((task, taskIndex) => `
+                            <div class="day-task ${task.completed ? 'completed' : ''}">
+                                <input type="checkbox" 
+                                       class="task-checkbox" 
+                                       ${task.completed ? 'checked' : ''}
+                                       onchange="toggleTask(${weekIndex}, ${taskIndex})">
+                                <div class="task-content ${task.completed ? 'task-completed' : ''}">
+                                    <div class="task-day">${task.days}</div>
+                                    <div class="task-description">${task.description}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                container.appendChild(weekDiv);
+            });
+        }
+
+        function expandAll() {
+            writingPlan.forEach((_, index) => {
+                const content = document.getElementById(`week-content-${index}`);
+                const icon = document.getElementById(`expand-icon-${index}`);
+                content.classList.add('expanded');
+                icon.classList.add('rotated');
+            });
+        }
+
+        function resetProgress() {
+            if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
+                localStorage.removeItem('dissertationPlan');
+                location.reload();
+            }
+        }
+
+        // Initialize
+        loadProgress();
+        renderWeeks();
+        updateOverallProgress();
+
+        // Expand current week by default
+        const currentWeekIndex = writingPlan.findIndex(w => w.status === 'current');
+        if (currentWeekIndex >= 0) {
+            const icon = document.getElementById(`expand-icon-${currentWeekIndex}`);
+            if (icon) icon.classList.add('rotated');
+        }
+    </script>
+</body>
+</html>
