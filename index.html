@@ -37,8 +37,24 @@
         .subtitle {
             text-align: center;
             color: #718096;
-            margin-bottom: 3rem;
+            margin-bottom: 1rem;
             font-size: 1.1rem;
+        }
+
+        .sync-status {
+            text-align: center;
+            color: #48bb78;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .sync-status.syncing {
+            color: #f6ad55;
+        }
+
+        .sync-status.error {
+            color: #f56565;
         }
 
         .overall-progress {
@@ -288,6 +304,7 @@
     <div class="container">
         <h1>📚 Dissertation Progress Tracker</h1>
         <p class="subtitle">Content Teams in Esports - Daily Task Tracker</p>
+        <div class="sync-status" id="syncStatus">🔄 Connecting to cloud...</div>
 
         <div class="overall-progress">
             <h2>Overall Progress</h2>
@@ -318,7 +335,28 @@
         </div>
     </div>
 
-    <script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCoq5nM17RTBXDZOlwWBsIm7x6es_VJii0",
+            authDomain: "diss-writing-tracker.firebaseapp.com",
+            databaseURL: "https://diss-writing-tracker-default-rtdb.firebaseio.com",
+            projectId: "diss-writing-tracker",
+            storageBucket: "diss-writing-tracker.firebasestorage.app",
+            messagingSenderId: "954028268463",
+            appId: "1:954028268463:web:cc22977295a86af7056d5a",
+            measurementId: "G-88DXYZ7EJX"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const progressRef = ref(database, 'dissertationProgress');
+
         const writingPlan = [
             {
                 week: 1,
@@ -390,26 +428,54 @@
             }
         ];
 
-        function saveProgress() {
-            localStorage.setItem('dissertationPlan', JSON.stringify(writingPlan));
-        }
+        let localPlan = JSON.parse(JSON.stringify(writingPlan));
 
-        function loadProgress() {
-            const saved = localStorage.getItem('dissertationPlan');
-            if (saved) {
-                const savedPlan = JSON.parse(saved);
-                savedPlan.forEach((savedWeek, weekIndex) => {
-                    writingPlan[weekIndex].status = savedWeek.status;
-                    savedWeek.tasks.forEach((savedTask, taskIndex) => {
-                        writingPlan[weekIndex].tasks[taskIndex].completed = savedTask.completed;
-                    });
-                });
+        // Update sync status
+        function updateSyncStatus(status) {
+            const statusEl = document.getElementById('syncStatus');
+            if (status === 'connected') {
+                statusEl.textContent = '✅ Synced across all devices';
+                statusEl.className = 'sync-status';
+            } else if (status === 'syncing') {
+                statusEl.textContent = '🔄 Syncing...';
+                statusEl.className = 'sync-status syncing';
+            } else if (status === 'error') {
+                statusEl.textContent = '⚠️ Connection error - changes saved locally';
+                statusEl.className = 'sync-status error';
             }
         }
 
+        // Load data from Firebase
+        onValue(progressRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                localPlan = data;
+                renderWeeks();
+                updateOverallProgress();
+            } else {
+                // Initialize Firebase with default data
+                saveToFirebase();
+            }
+            updateSyncStatus('connected');
+        }, (error) => {
+            console.error('Firebase error:', error);
+            updateSyncStatus('error');
+        });
+
+        // Save to Firebase
+        function saveToFirebase() {
+            updateSyncStatus('syncing');
+            set(progressRef, localPlan)
+                .then(() => updateSyncStatus('connected'))
+                .catch((error) => {
+                    console.error('Save error:', error);
+                    updateSyncStatus('error');
+                });
+        }
+
         function updateOverallProgress() {
-            const totalTasks = writingPlan.reduce((sum, week) => sum + week.tasks.length, 0);
-            const completedTasks = writingPlan.reduce((sum, week) => 
+            const totalTasks = localPlan.reduce((sum, week) => sum + week.tasks.length, 0);
+            const completedTasks = localPlan.reduce((sum, week) => 
                 sum + week.tasks.filter(t => t.completed).length, 0);
             
             const percentage = Math.round((completedTasks / totalTasks) * 100);
@@ -418,52 +484,48 @@
             document.getElementById('overallProgress').textContent = percentage + '%';
             document.getElementById('completedTasks').textContent = `${completedTasks}/${totalTasks}`;
             
-            const completedWeeks = writingPlan.filter(w => w.status === 'completed').length;
+            const completedWeeks = localPlan.filter(w => w.status === 'completed').length;
             document.getElementById('completedWeeks').textContent = `${completedWeeks}/6`;
             
-            const currentWeek = writingPlan.find(w => w.status === 'current');
+            const currentWeek = localPlan.find(w => w.status === 'current');
             document.getElementById('currentWeek').textContent = currentWeek ? `Week ${currentWeek.week}` : 'Complete!';
         }
 
         function updateWeekStatus(weekIndex) {
-            const week = writingPlan[weekIndex];
+            const week = localPlan[weekIndex];
             const allCompleted = week.tasks.every(t => t.completed);
             
             if (allCompleted && week.status !== 'completed') {
                 week.status = 'completed';
-                
-                // Mark next week as current
-                if (weekIndex < writingPlan.length - 1) {
-                    writingPlan[weekIndex + 1].status = 'current';
+                if (weekIndex < localPlan.length - 1) {
+                    localPlan[weekIndex + 1].status = 'current';
                 }
             } else if (!allCompleted && week.status === 'completed') {
                 week.status = 'current';
             }
         }
 
-        function toggleTask(weekIndex, taskIndex) {
-            writingPlan[weekIndex].tasks[taskIndex].completed = 
-                !writingPlan[weekIndex].tasks[taskIndex].completed;
+        window.toggleTask = function(weekIndex, taskIndex) {
+            localPlan[weekIndex].tasks[taskIndex].completed = 
+                !localPlan[weekIndex].tasks[taskIndex].completed;
             
             updateWeekStatus(weekIndex);
-            saveProgress();
-            renderWeeks();
-            updateOverallProgress();
-        }
+            saveToFirebase();
+        };
 
-        function toggleWeek(weekIndex) {
+        window.toggleWeek = function(weekIndex) {
             const content = document.getElementById(`week-content-${weekIndex}`);
             const icon = document.getElementById(`expand-icon-${weekIndex}`);
             
             content.classList.toggle('expanded');
             icon.classList.toggle('rotated');
-        }
+        };
 
         function renderWeeks() {
             const container = document.getElementById('weeksContainer');
             container.innerHTML = '';
 
-            writingPlan.forEach((week, weekIndex) => {
+            localPlan.forEach((week, weekIndex) => {
                 const completedTasks = week.tasks.filter(t => t.completed).length;
                 const totalTasks = week.tasks.length;
 
@@ -511,29 +573,27 @@
             });
         }
 
-        function expandAll() {
-            writingPlan.forEach((_, index) => {
+        window.expandAll = function() {
+            localPlan.forEach((_, index) => {
                 const content = document.getElementById(`week-content-${index}`);
                 const icon = document.getElementById(`expand-icon-${index}`);
                 content.classList.add('expanded');
                 icon.classList.add('rotated');
             });
-        }
+        };
 
-        function resetProgress() {
-            if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
-                localStorage.removeItem('dissertationPlan');
-                location.reload();
+        window.resetProgress = function() {
+            if (confirm('Are you sure you want to reset all progress? This will affect all devices!')) {
+                localPlan = JSON.parse(JSON.stringify(writingPlan));
+                saveToFirebase();
             }
-        }
+        };
 
         // Initialize
-        loadProgress();
         renderWeeks();
         updateOverallProgress();
 
-        // Expand current week by default
-        const currentWeekIndex = writingPlan.findIndex(w => w.status === 'current');
+        const currentWeekIndex = localPlan.findIndex(w => w.status === 'current');
         if (currentWeekIndex >= 0) {
             const icon = document.getElementById(`expand-icon-${currentWeekIndex}`);
             if (icon) icon.classList.add('rotated');
