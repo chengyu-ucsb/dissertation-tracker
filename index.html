@@ -344,7 +344,25 @@
 	const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
         const progressRef = ref(database, 'dissertationProgress');
+		// ---- Anonymous Auth (so only you can write) ----
+		import { getAuth, signInAnonymously, onAuthStateChanged } 
+		  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+		const auth = getAuth(app);
+
+		// Sign in silently every time you load the page
+		signInAnonymously(auth)
+		  .catch((error) => {
+		    console.error("Anonymous sign-in failed:", error);
+		  });
+		
+		// Once signed in, Firebase will apply your UID to rules
+		onAuthStateChanged(auth, (user) => {
+		  if (user) {
+		    console.log("Signed in anonymously. UID:", user.uid);
+		  }
+		});
+		
         const writingPlan = [
             {
                 week: 1,
